@@ -22,7 +22,7 @@ Scalable exploratory data analysis of Apple App Store apps with **PySpark**. The
 
 ## Methodology
 
-![Methodology flowchart](reports/figures/methodology_flowchart.png)
+![Methodology flowchart](methodology_flowchart.png)
 
 **[Explore the interactive methodology](https://spoorthihs4-ops.github.io/app-store-analytics-spark/)** – click any stage to see what it does, why it matters and the Spark techniques behind it.
 
@@ -58,11 +58,11 @@ flowchart TB
 
 | Notebook | What it does | Key Spark techniques |
 |---|---|---|
-| [`01_data_ingestion_and_quality`](notebooks/01_data_ingestion_and_quality.ipynb) | Loads the CSV, maps columns to a canonical schema, audits missing values, IQR outliers, business rules and duplicates, engineers features and writes Parquet | explicit `StructType`, single-pass aggregations, `percentile_approx`, Parquet |
-| [`02_descriptive_analytics`](notebooks/02_descriptive_analytics.ipynb) | Genre-level KPIs, price × popularity segmentation, price and size effects | `groupBy/agg`, `approxQuantile`, heatmaps |
-| [`03_free_vs_paid_comparison`](notebooks/03_free_vs_paid_comparison.ipynb) | Naive vs stratified comparison, Welch t-test and Cohen's d, validity caveats | `pivot`, stratification |
-| [`04_engagement_score_and_ranking`](notebooks/04_engagement_score_and_ranking.ipynb) | Log-scaled quality + reach score, top-N per genre, weight-sensitivity check | window functions (`row_number`, `percent_rank`) |
-| [`05_performance_optimisation`](notebooks/05_performance_optimisation.ipynb) | Benchmarks CSV vs Parquet, pruning, caching and shuffle tuning; reads physical plans; broadcast join; 50x scaling plan | AQE, `cache`, `explain("formatted")`, `broadcast`, Spark UI |
+| [`01_data_ingestion_and_quality`](01_data_ingestion_and_quality.ipynb) | Loads the CSV, maps columns to a canonical schema, audits missing values, IQR outliers, business rules and duplicates, engineers features and writes Parquet | explicit `StructType`, single-pass aggregations, `percentile_approx`, Parquet |
+| [`02_descriptive_analytics`](02_descriptive_analytics.ipynb) | Genre-level KPIs, price × popularity segmentation, price and size effects | `groupBy/agg`, `approxQuantile`, heatmaps |
+| [`03_free_vs_paid_comparison`](03_free_vs_paid_comparison.ipynb) | Naive vs stratified comparison, Welch t-test and Cohen's d, validity caveats | `pivot`, stratification |
+| [`04_engagement_score_and_ranking`](04_engagement_score_and_ranking.ipynb) | Log-scaled quality + reach score, top-N per genre, weight-sensitivity check | window functions (`row_number`, `percent_rank`) |
+| [`05_performance_optimisation`](05_performance_optimisation.ipynb) | Benchmarks CSV vs Parquet, pruning, caching and shuffle tuning; reads physical plans; broadcast join; 50x scaling plan | AQE, `cache`, `explain("formatted")`, `broadcast`, Spark UI |
 
 ## Key design decisions
 
@@ -82,7 +82,7 @@ flowchart TB
 | Workload speed-up (baseline → pruned + cached + tuned) | _fill in from notebook 05_ |
 | Parquet vs CSV full-scan speed-up | _fill in from notebook 05_ |
 
-Figures are written to [`reports/figures/`](reports/figures/).
+When the notebooks run, figures are saved to `reports/figures/`.
 
 ## How to run
 
@@ -98,7 +98,7 @@ cd app-store-analytics-spark
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt          # requires Java 17+ for Spark
 # place the CSV at data/raw/apple_appstore_apps.csv (or set APPSTORE_CSV=/path/to/file.csv)
-jupyter notebook notebooks/
+jupyter notebook
 ```
 
 ## Dataset
@@ -107,22 +107,14 @@ Apple App Store apps metadata (app id, name, primary genre, price, average user 
 
 ## Repository structure
 
-```
-app-store-analytics-spark/
-├── notebooks/
-│   ├── 01_data_ingestion_and_quality.ipynb
-│   ├── 02_descriptive_analytics.ipynb
-│   ├── 03_free_vs_paid_comparison.ipynb
-│   ├── 04_engagement_score_and_ranking.ipynb
-│   └── 05_performance_optimisation.ipynb
-├── data/
-│   ├── raw/            # input CSV (git-ignored)
-│   └── processed/      # Parquet output (git-ignored)
-├── reports/figures/    # methodology flowchart + saved charts
-├── docs/index.html     # interactive methodology page (GitHub Pages)
-├── requirements.txt
-└── README.md
-```
+All files sit in the repository root so they upload and display correctly:
+
+- `01_…` to `05_…ipynb` – the five analysis notebooks
+- `methodology_flowchart.png` – methodology diagram
+- `index.html` – interactive methodology page (GitHub Pages)
+- `requirements.txt`, `.gitignore`
+
+When the notebooks run, they create `data/raw/`, `data/processed/` and `reports/figures/` automatically.
 
 ## Author
 

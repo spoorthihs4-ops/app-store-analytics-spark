@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Methodology · Distributed App Store Analytics with Apache Spark</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#F3F6FB;--panel:#FFFFFF;--ink:#1F2A44;--muted:#5B6478;--line:#D6DDEA;--chip:#EEF2F9;--accent:#E25A1C}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111827;--panel:#1B2436;--ink:#E7ECF5;--muted:#A6B0C3;--line:#2E3A52;--chip:#25304A}}
+:root[data-theme="dark"]{--bg:#111827;--panel:#1B2436;--ink:#E7ECF5;--muted:#A6B0C3;--line:#2E3A52;--chip:#25304A}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;line-height:1.5}
+main{max-width:1180px;margin:0 auto;padding:28px 20px 40px}
+h1{font-size:clamp(1.4rem,3vw,2rem);margin:0 0 6px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 20px;max-width:70ch}
+.layout{display:grid;grid-template-columns:1fr;gap:20px}
+@media (max-width:900px){.layout{grid-template-columns:1fr}}
+.chart{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:10px;overflow-x:auto}
+.chart svg{width:100%;min-width:720px;height:auto;display:block}
+.node{cursor:pointer;transition:opacity .2s, transform .2s;transform-box:fill-box;transform-origin:center}
+.node:hover{transform:translateY(-2px)}
+.node:focus{outline:none}
+.node:focus-visible rect:first-child, .node.active > g rect{stroke-width:4}
+.chart.has-active .node:not(.active){opacity:.45}
+aside{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 26px;max-width:860px}
+aside h2{margin:0 0 4px;font-size:1.25rem;display:flex;gap:10px;align-items:center}
+.dot{width:30px;height:30px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-size:.9rem;font-weight:700;flex:none}
+aside h3{font-size:.95rem;margin:16px 0 4px}
+aside p{margin:0;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chips span{background:var(--chip);border-radius:999px;padding:3px 10px;font-size:.82rem}
+.nb{display:inline-block;margin-top:16px;font-size:.9rem;color:var(--accent);font-weight:600;text-decoration:none}
+.nb:hover{text-decoration:underline}
+.nav{display:flex;gap:8px;margin-top:18px}
+.nav button{flex:1;border:1px solid var(--line);background:var(--chip);color:var(--ink);border-radius:10px;padding:8px;font:inherit;cursor:pointer}
+.nav button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.hint{color:var(--muted);font-size:.9rem;margin-top:10px}
+@media (prefers-reduced-motion:reduce){.node{transition:none}.node:hover{transform:none}}
+</style></head>
+<body><main>
+<h1>How the App Store analysis was built</h1>
+<p class="sub">Eight stages take raw App Store data to validated insights on Apache Spark. Select any stage to see what it does, why it matters and which Spark techniques it uses.</p>
+<div class="layout">
+<div class="chart" id="chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="20 85 1160 600" role="img" aria-label="Methodology flowchart" font-family="Segoe UI, Helvetica Neue, Helvetica, Arial, sans-serif">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5B6478"/></marker>
+<filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1F2A44" flood-opacity="0.18"/></filter>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F6F8FC"/><stop offset="1" stop-color="#EEF3FB"/></linearGradient></defs>
+
+
+<g class="node" data-n="1" tabindex="0" role="button" aria-label="Stage 1 details">
+<g filter="url(#sh)"><rect x="40" y="105" width="250" height="130" rx="14" fill="#fff" stroke="#2B59C3" stroke-width="2"/></g>
+<path d="M40,119 a14,14 0 0 1 14,-14 h222 a14,14 0 0 1 14,14 v30 h-250 z" fill="#2B59C3"/>
+<circle cx="64" cy="127" r="13" fill="#fff"/><text x="64" y="132" text-anchor="middle" font-size="14" font-weight="700" fill="#2B59C3">1</text>
+<text x="86" y="133" font-size="16" font-weight="700" fill="#fff">Ingest</text>
+<circle cx="60" cy="167" r="3.5" fill="#2B59C3"/><text x="72" y="171" font-size="13.5" fill="#2B3245">Raw App Store CSV</text>
+<circle cx="60" cy="189" r="3.5" fill="#2B59C3"/><text x="72" y="193" font-size="13.5" fill="#2B3245">Column mapping</text>
+<circle cx="60" cy="211" r="3.5" fill="#2B59C3"/><text x="72" y="215" font-size="13.5" fill="#2B3245">Explicit Spark schema</text>
+</g>
+<g class="node" data-n="2" tabindex="0" role="button" aria-label="Stage 2 details">
+<g filter="url(#sh)"><rect x="330" y="105" width="250" height="130" rx="14" fill="#fff" stroke="#0E9384" stroke-width="2"/></g>
+<path d="M330,119 a14,14 0 0 1 14,-14 h222 a14,14 0 0 1 14,14 v30 h-250 z" fill="#0E9384"/>
+<circle cx="354" cy="127" r="13" fill="#fff"/><text x="354" y="132" text-anchor="middle" font-size="14" font-weight="700" fill="#0E9384">2</text>
+<text x="376" y="133" font-size="16" font-weight="700" fill="#fff">Audit data quality</text>
+<circle cx="350" cy="167" r="3.5" fill="#0E9384"/><text x="362" y="171" font-size="13.5" fill="#2B3245">Missing values (single pass)</text>
+<circle cx="350" cy="189" r="3.5" fill="#0E9384"/><text x="362" y="193" font-size="13.5" fill="#2B3245">IQR outliers · percentile_approx</text>
+<circle cx="350" cy="211" r="3.5" fill="#0E9384"/><text x="362" y="215" font-size="13.5" fill="#2B3245">Business rules · duplicates</text>
+</g>
+<g class="node" data-n="3" tabindex="0" role="button" aria-label="Stage 3 details">
+<g filter="url(#sh)"><rect x="620" y="105" width="250" height="130" rx="14" fill="#fff" stroke="#7A4FD1" stroke-width="2"/></g>
+<path d="M620,119 a14,14 0 0 1 14,-14 h222 a14,14 0 0 1 14,14 v30 h-250 z" fill="#7A4FD1"/>
+<circle cx="644" cy="127" r="13" fill="#fff"/><text x="644" y="132" text-anchor="middle" font-size="14" font-weight="700" fill="#7A4FD1">3</text>
+<text x="666" y="133" font-size="16" font-weight="700" fill="#fff">Clean &amp; engineer</text>
+<circle cx="640" cy="167" r="3.5" fill="#7A4FD1"/><text x="652" y="171" font-size="13.5" fill="#2B3245">Null-safe ratings · de-dup</text>
+<circle cx="640" cy="189" r="3.5" fill="#7A4FD1"/><text x="652" y="193" font-size="13.5" fill="#2B3245">Price / rating / size bands</text>
+<circle cx="640" cy="211" r="3.5" fill="#7A4FD1"/><text x="652" y="215" font-size="13.5" fill="#2B3245">Popularity score</text>
+</g>
+<path d="M294,170.0 H324" fill="none" stroke="#5B6478" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M584,170.0 H614" fill="none" stroke="#5B6478" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M874,170.0 H935" fill="none" stroke="#5B6478" stroke-width="2.2" marker-end="url(#ah)"/>
+<g filter="url(#sh)"><path d="M940,132.0 v76 a90,18 0 0 0 180,0 v-76" fill="#FFF4E8" stroke="#E25A1C" stroke-width="2"/><ellipse cx="1030" cy="132.0" rx="90" ry="18" fill="#FFE3CC" stroke="#E25A1C" stroke-width="2"/></g>
+<text x="1030" y="178.0" text-anchor="middle" font-size="16" font-weight="700" fill="#B8430F">Parquet table</text><text x="1030" y="198.0" text-anchor="middle" font-size="12.5" fill="#7A3B17">partitioned by genre</text>
+<g class="node" data-n="4" tabindex="0" role="button" aria-label="Stage 4 details">
+<g filter="url(#sh)"><rect x="40" y="320" width="340" height="130" rx="14" fill="#fff" stroke="#E25A1C" stroke-width="2"/></g>
+<path d="M40,334 a14,14 0 0 1 14,-14 h312 a14,14 0 0 1 14,14 v30 h-340 z" fill="#E25A1C"/>
+<circle cx="64" cy="342" r="13" fill="#fff"/><text x="64" y="347" text-anchor="middle" font-size="14" font-weight="700" fill="#E25A1C">4</text>
+<text x="86" y="348" font-size="16" font-weight="700" fill="#fff">Descriptive analytics</text>
+<circle cx="60" cy="382" r="3.5" fill="#E25A1C"/><text x="72" y="386" font-size="13.5" fill="#2B3245">Genre KPIs: reach, rating, revenue</text>
+<circle cx="60" cy="404" r="3.5" fill="#E25A1C"/><text x="72" y="408" font-size="13.5" fill="#2B3245">Price × popularity segments</text>
+<circle cx="60" cy="426" r="3.5" fill="#E25A1C"/><text x="72" y="430" font-size="13.5" fill="#2B3245">Mean vs median skew check</text>
+</g>
+<g class="node" data-n="5" tabindex="0" role="button" aria-label="Stage 5 details">
+<g filter="url(#sh)"><rect x="430" y="320" width="340" height="130" rx="14" fill="#fff" stroke="#D1335B" stroke-width="2"/></g>
+<path d="M430,334 a14,14 0 0 1 14,-14 h312 a14,14 0 0 1 14,14 v30 h-340 z" fill="#D1335B"/>
+<circle cx="454" cy="342" r="13" fill="#fff"/><text x="454" y="347" text-anchor="middle" font-size="14" font-weight="700" fill="#D1335B">5</text>
+<text x="476" y="348" font-size="16" font-weight="700" fill="#fff">Free vs paid</text>
+<circle cx="450" cy="382" r="3.5" fill="#D1335B"/><text x="462" y="386" font-size="13.5" fill="#2B3245">Stratified by genre &amp; popularity</text>
+<circle cx="450" cy="404" r="3.5" fill="#D1335B"/><text x="462" y="408" font-size="13.5" fill="#2B3245">Welch t-test + Cohen's d</text>
+<circle cx="450" cy="426" r="3.5" fill="#D1335B"/><text x="462" y="430" font-size="13.5" fill="#2B3245">Confounder caveats</text>
+</g>
+<g class="node" data-n="6" tabindex="0" role="button" aria-label="Stage 6 details">
+<g filter="url(#sh)"><rect x="820" y="320" width="340" height="130" rx="14" fill="#fff" stroke="#D99A06" stroke-width="2"/></g>
+<path d="M820,334 a14,14 0 0 1 14,-14 h312 a14,14 0 0 1 14,14 v30 h-340 z" fill="#D99A06"/>
+<circle cx="844" cy="342" r="13" fill="#fff"/><text x="844" y="347" text-anchor="middle" font-size="14" font-weight="700" fill="#D99A06">6</text>
+<text x="866" y="348" font-size="16" font-weight="700" fill="#fff">Engagement ranking</text>
+<circle cx="840" cy="382" r="3.5" fill="#D99A06"/><text x="852" y="386" font-size="13.5" fill="#2B3245">Log-scaled quality + reach score</text>
+<circle cx="840" cy="404" r="3.5" fill="#D99A06"/><text x="852" y="408" font-size="13.5" fill="#2B3245">Top-N per genre (window fns)</text>
+<circle cx="840" cy="426" r="3.5" fill="#D99A06"/><text x="852" y="430" font-size="13.5" fill="#2B3245">Weight-sensitivity (Spearman)</text>
+</g>
+<path d="M1030,228.0 V285 H210.0" fill="none" stroke="#5B6478" stroke-width="2.2"/>
+<path d="M210.0,285 V314" fill="none" stroke="#5B6478" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M600.0,285 V314" fill="none" stroke="#5B6478" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M990.0,285 V314" fill="none" stroke="#5B6478" stroke-width="2.2" marker-end="url(#ah)"/>
+<rect x="490" y="272" width="220" height="24" rx="12" fill="#fff" stroke="#C9D2E3"/><text x="600" y="289" text-anchor="middle" font-size="12.5" fill="#5B6478">three analysis tracks in parallel</text>
+<g class="node" data-n="7" tabindex="0" role="button" aria-label="Stage 7 details">
+<g filter="url(#sh)"><rect x="90" y="535" width="500" height="130" rx="14" fill="#fff" stroke="#16A34A" stroke-width="2"/></g>
+<path d="M90,549 a14,14 0 0 1 14,-14 h472 a14,14 0 0 1 14,14 v30 h-500 z" fill="#16A34A"/>
+<circle cx="114" cy="557" r="13" fill="#fff"/><text x="114" y="562" text-anchor="middle" font-size="14" font-weight="700" fill="#16A34A">7</text>
+<text x="136" y="563" font-size="16" font-weight="700" fill="#fff">Optimise performance</text>
+<circle cx="110" cy="597" r="3.5" fill="#16A34A"/><text x="122" y="601" font-size="13.5" fill="#2B3245">CSV → Parquet · column pruning</text>
+<circle cx="110" cy="619" r="3.5" fill="#16A34A"/><text x="122" y="623" font-size="13.5" fill="#2B3245">Caching · shuffle tuning · AQE</text>
+<circle cx="110" cy="641" r="3.5" fill="#16A34A"/><text x="122" y="645" font-size="13.5" fill="#2B3245">explain() plans · Spark UI</text>
+</g>
+<g class="node" data-n="8" tabindex="0" role="button" aria-label="Stage 8 details">
+<g filter="url(#sh)"><rect x="640" y="535" width="470" height="130" rx="14" fill="#fff" stroke="#1F2A44" stroke-width="2"/></g>
+<path d="M640,549 a14,14 0 0 1 14,-14 h442 a14,14 0 0 1 14,14 v30 h-470 z" fill="#1F2A44"/>
+<circle cx="664" cy="557" r="13" fill="#fff"/><text x="664" y="562" text-anchor="middle" font-size="14" font-weight="700" fill="#1F2A44">8</text>
+<text x="686" y="563" font-size="16" font-weight="700" fill="#fff">Insights &amp; scale-out</text>
+<circle cx="660" cy="597" r="3.5" fill="#1F2A44"/><text x="672" y="601" font-size="13.5" fill="#2B3245">Business recommendations</text>
+<circle cx="660" cy="619" r="3.5" fill="#1F2A44"/><text x="672" y="623" font-size="13.5" fill="#2B3245">Validated KPIs &amp; limitations</text>
+<circle cx="660" cy="641" r="3.5" fill="#1F2A44"/><text x="672" y="645" font-size="13.5" fill="#2B3245">50× scaling strategy</text>
+</g>
+<path d="M210.0,450 V500 H990.0 V450" fill="none" stroke="#5B6478" stroke-width="2.2"/>
+<path d="M600.0,450 V500" fill="none" stroke="#5B6478" stroke-width="2.2"/>
+<path d="M340.0,500 V529" fill="none" stroke="#5B6478" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M875,500 V529" fill="none" stroke="#5B6478" stroke-width="2.2" marker-end="url(#ah)"/>
+<path d="M594,600.0 H634" fill="none" stroke="#5B6478" stroke-width="2.2" marker-end="url(#ah)"/>
+</svg></div>
+<aside id="panel" aria-live="polite"></aside>
+</div>
+<p class="hint">Tip: use Tab and Enter, or the arrow keys, to step through the stages.</p>
+</main>
+<script>
+const D={"1": {"t": "Ingest", "nb": "01_data_ingestion_and_quality", "what": "Read the raw App Store CSV with Spark, map its column names onto one canonical set, and cast every field to an explicit type.", "why": "Inferred schemas are slow and fragile. An explicit schema makes the pipeline reproducible and fails loudly if a column is missing, instead of quietly analysing demo data.", "tech": ["StructType schema", "multiLine / escape CSV options", "column-name mapping", "fail-fast validation"]}, "2": {"t": "Audit data quality", "nb": "01_data_ingestion_and_quality", "what": "Count missing values for every column in one pass, flag IQR outliers with approximate percentiles, and check business rules such as ratings between 0 and 5 and unique app IDs.", "why": "Bad data produces confident but wrong insights. Auditing first shows what needs cleaning and which extreme values are real market behaviour.", "tech": ["single-pass aggregations", "percentile_approx", "IQR rule", "duplicate detection"]}, "3": {"t": "Clean and engineer", "nb": "01_data_ingestion_and_quality", "what": "Remove invalid rows and duplicates, keep unrated apps unrated, and add business features: free flag, price, rating and size bands, and a popularity score.", "why": "Filling missing ratings with 0 would drag averages down. Clear, named bands make the later analysis easy to read for a product team.", "tech": ["dropDuplicates", "null-safe features", "when/otherwise banding", "Parquet output partitioned by genre"]}, "4": {"t": "Descriptive analytics", "nb": "02_descriptive_analytics", "what": "Summarise reach, rating, price and revenue potential by genre, segment apps by price and popularity, and compare mean with median rating counts.", "why": "Genre and pricing patterns answer the product team's first questions. The mean vs median gap shows how concentrated the market is.", "tech": ["groupBy / agg", "approxQuantile bands", "heatmaps", "skew analysis"]}, "5": {"t": "Free vs paid", "nb": "03_free_vs_paid_comparison", "what": "Compare free and paid apps overall, then within each genre and popularity band, with a Welch t-test and Cohen's d.", "why": "A naive comparison mixes genres and popularity levels. Stratifying and reporting effect size shows whether a difference is real and whether it matters.", "tech": ["pivot", "stratification", "Welch t-test", "Cohen's d"]}, "6": {"t": "Engagement ranking", "nb": "04_engagement_score_and_ranking", "what": "Combine normalised rating (quality) and log-scaled rating count (reach) into one score, rank apps inside each genre, and test how stable the ranking is when the weights change.", "why": "Log-scaling stops a few blockbuster apps from dominating. The sensitivity check proves the ranking does not depend on one arbitrary weight choice.", "tech": ["row_number / percent_rank windows", "log1p normalisation", "Spearman correlation"]}, "7": {"t": "Optimise performance", "nb": "05_performance_optimisation", "what": "Benchmark a repeated analytics workload step by step: Parquet instead of CSV, column pruning, caching and shuffle-partition tuning, then read the physical plans and monitor jobs in the Spark UI.", "why": "Each optimisation is measured with a warm-up run and the median of repeated runs, so the speed-ups reported are real rather than one-off timings.", "tech": ["Adaptive Query Execution", "cache", "spark.sql.shuffle.partitions", "explain(formatted)", "broadcast join", "Spark UI"]}, "8": {"t": "Insights and scale-out", "nb": "05_performance_optimisation", "what": "Turn results into recommendations for app developers, record the limits of each metric, and plan how the pipeline would handle 50 times more data.", "why": "Insights are only useful if their caveats are clear, and a pipeline is only useful if it keeps working as data grows.", "tech": ["business recommendations", "documented limitations", "partitioning and skew strategy", "approximate algorithms"]}};
+const C={1:"#2B59C3",2:"#0E9384",3:"#7A4FD1",4:"#E25A1C",5:"#D1335B",6:"#D99A06",7:"#16A34A",8:"#1F2A44"};
+const REPO="https://github.com/spoorthihs4-ops/app-store-analytics-spark/blob/main/";
+const chart=document.getElementById("chart"), panel=document.getElementById("panel");
+let cur=1;
+function show(n){
+  cur=n; const d=D[n];
+  document.querySelectorAll(".node").forEach(g=>g.classList.toggle("active",+g.dataset.n===n));
+  chart.classList.add("has-active");
+  panel.innerHTML=`<h2><span class="dot" style="background:${C[n]}">${n}</span>${d.t}</h2>
+  <h3>What happens</h3><p>${d.what}</p>
+  <h3>Why it matters</h3><p>${d.why}</p>
+  <h3>Spark techniques</h3><div class="chips">${d.tech.map(t=>`<span>${t}</span>`).join("")}</div>
+  <a class="nb" href="${REPO+d.nb}.ipynb" target="_blank" rel="noopener">Open notebook ${d.nb.slice(0,2)} on GitHub</a>
+  <div class="nav"><button id="prev" ${n===1?"disabled":""}>Previous stage</button><button id="next" ${n===8?"disabled":""}>Next stage</button></div>`;
+  document.getElementById("prev").onclick=()=>show(Math.max(1,n-1));
+  document.getElementById("next").onclick=()=>show(Math.min(8,n+1));
+}
+document.querySelectorAll(".node").forEach(g=>{
+  g.addEventListener("click",()=>show(+g.dataset.n));
+  g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();show(+g.dataset.n);}});
+});
+document.addEventListener("keydown",e=>{
+  if(e.target.tagName==="BUTTON")return;
+  if(e.key==="ArrowRight")show(Math.min(8,cur+1));
+  if(e.key==="ArrowLeft")show(Math.max(1,cur-1));
+});
+show(1);
+</script>
+</body></html>
