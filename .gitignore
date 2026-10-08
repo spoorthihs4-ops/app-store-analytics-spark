@@ -1,0 +1,18 @@
+# Data (download separately - see README)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Spark / Python artefacts
+spark-warehouse/
+metastore_db/
+derby.log
+*.crc
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+.DS_Store
